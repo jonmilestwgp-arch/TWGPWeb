@@ -1,0 +1,438 @@
+<!-- ============================================================
+     Severn Trent Water leak counter section
+     Green Party UK branded (colours + fonts, no logos)
+     ============================================================ -->
+
+<!-- Explicit charset so special characters render correctly regardless of host page -->
+<meta charset="UTF-8">
+
+<!-- Google Fonts: Manrope for body text, Bebas Neue for the odometer digits -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+
+<!-- Font Awesome 5 icon font -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<div id="leak-counter-section" class="leak-section">
+
+  <!-- ==================== Since-you-arrived counter ==================== -->
+  <h2 class="leak-title">Litres leaked by Severn Trent Water since you arrived</h2>
+  <p class="leak-subtitle">Based on a stated leak rate of 400 million litres/day</p>
+
+  <!-- Rolling-digit "odometer" display, populated and animated by the
+       script at the bottom of this file -->
+  <div class="odometer-wrap">
+    <div id="odometer" class="odometer-box"></div>
+  </div>
+
+  <!-- Fun comparison cards for the "since you arrived" total.
+       Each card's number (id="fact-*") is filled in by JS. -->
+  <div class="fun-fact-grid">
+    <div class="fun-fact-card">
+      <i class="fas fa-users fun-fact-icon"></i>
+      <div id="fact-people" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">People's Daily Water Usage</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-fire-extinguisher fun-fact-icon"></i>
+      <div id="fact-fireengines" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Fire Engines' Worth of Water</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-bath fun-fact-icon"></i>
+      <div id="fact-baths" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Bathtubs Filled</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-mug-hot fun-fact-icon"></i>
+      <div id="fact-tea" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Cups of Tea</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-swimmer fun-fact-icon"></i>
+      <div id="fact-pools" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Public Swimming Pools</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-truck fun-fact-icon"></i>
+      <div id="fact-tankers" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Water Tanker Loads</div>
+    </div>
+  </div>
+
+  <hr class="leak-divider">
+
+  <!-- ==================== Year-to-date counter ==================== -->
+  <h3 class="leak-title">Year to Date</h3>
+  <p class="leak-subtitle">Running total since 1 January this year</p>
+
+  <!-- Same six comparisons as above, but driven by the year-to-date
+       total instead of the since-you-arrived total (id="ytd-*") -->
+  <div class="fun-fact-grid">
+    <div class="fun-fact-card">
+      <i class="fas fa-users fun-fact-icon"></i>
+      <div id="ytd-people" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">People's Daily Water Usage</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-fire-extinguisher fun-fact-icon"></i>
+      <div id="ytd-fireengines" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Fire Engines' Worth of Water</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-bath fun-fact-icon"></i>
+      <div id="ytd-baths" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Bathtubs Filled</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-server fun-fact-icon"></i>
+      <div id="ytd-datacentre" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Days of Data Centre Usage</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-swimmer fun-fact-icon"></i>
+      <div id="ytd-pools" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Public Swimming Pools</div>
+    </div>
+    <div class="fun-fact-card">
+      <i class="fas fa-truck fun-fact-icon"></i>
+      <div id="ytd-tankers" class="fun-fact-number">0</div>
+      <div class="fun-fact-label">Water Tanker Loads</div>
+    </div>
+  </div>
+
+  <!-- Footer: plain-text summary of the year-to-date total, styled in
+       small caps via CSS text-transform (source text stays sentence case) -->
+  <p id="ytd-label" class="leak-footer-label">Litres leaked by Severn Trent Water so far this year</p>
+
+  <!-- Year-to-date figure, also shown as a rolling odometer -->
+  <div class="odometer-wrap">
+    <div id="ytd-odometer" class="odometer-box"></div>
+  </div>
+
+</div>
+
+<style>
+  /* ==================== Layout & typography ==================== */
+
+  .leak-section {
+    box-sizing: border-box;
+    font-family: 'Manrope', sans-serif;
+    text-align: center;
+    padding: 30px 24px;
+    background: #ffffff;
+    border: 2px solid #00A85A;   /* Green Party "Fair Green" */
+    border-radius: 10px;
+    max-width: 720px;            /* caps width on large screens */
+    width: 100%;                 /* shrinks to fit small screens */
+    margin: 0 auto;
+  }
+  /* Apply border-box everywhere inside so padding/borders never push
+     child elements wider than their parent on narrow viewports */
+  .leak-section * {
+    box-sizing: border-box;
+  }
+
+  .leak-title {
+    margin: 0 0 4px;
+    color: #00643B;   /* Green Party "Fun Green" (dark) */
+    font-weight: 700;
+    /* clamp(min, preferred, max): scales with viewport width so the
+       heading shrinks gracefully on small screens instead of wrapping badly */
+    font-size: clamp(1.05rem, 4vw, 1.5rem);
+  }
+  .leak-subtitle {
+    margin: 0 0 4px;
+    color: #28AA1E;   /* Green Party "Strong Green" */
+    font-size: clamp(0.75rem, 2.6vw, 0.9rem);
+    font-weight: 600;
+  }
+  .leak-divider {
+    border: none;
+    border-top: 1px solid #cdeedb;
+    margin: 28px 0 18px;
+  }
+  .leak-footer-label {
+    margin: 22px 0 8px;
+    padding-top: 14px;
+    border-top: 1px solid #cdeedb;
+    color: #00643B;
+    font-size: clamp(0.7rem, 2.4vw, 0.85rem);
+    font-weight: 700;
+    text-transform: uppercase;   /* visual only — source text stays sentence case */
+    letter-spacing: 0.05em;
+  }
+
+  /* ==================== Odometer ==================== */
+
+  /* Wrapper allows horizontal scroll as a last-resort safety net if a
+     number ever gets too wide to fit (e.g. a very large year-to-date total) */
+  .odometer-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+    overflow-x: auto;
+  }
+  .odometer-box {
+    display: inline-flex;
+    background: #00643B;
+    padding: 10px clamp(10px, 3vw, 18px);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 100, 59, 0.3);
+    overflow: hidden;
+    max-width: 100%;
+  }
+
+  /* Each digit is a fixed-height window (.odo-digit) showing one number
+     from a vertical strip of 0-9 (.odo-strip). Sliding the strip up
+     with a CSS transform reveals the next digit — this is what creates
+     the mechanical "rolling" animation. */
+  .odo-digit {
+    position: relative;
+    width: 0.56em;
+    height: 1.2em;      /* exactly one row tall — clips the strip to one digit */
+    overflow: hidden;
+    font-size: clamp(1.4rem, 7vw, 3rem);  /* shrinks on narrow screens */
+    font-weight: 400;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    flex-shrink: 0;      /* never let a digit column get squashed by flex */
+  }
+  .odo-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    /* smooth roll: 0.6s per tick, timed to match the once-per-second update */
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .odo-strip span {
+    height: 1.2em;
+    line-height: 1.2em;
+    text-align: center;
+  }
+  .odo-comma {
+    width: 0.3em;
+    font-size: clamp(1.4rem, 7vw, 3rem);
+    font-weight: 400;
+    color: #00A85A;
+    display: flex;
+    align-items: flex-end;
+    font-family: 'Bebas Neue', sans-serif;
+    flex-shrink: 0;
+  }
+
+  /* ==================== Comparison cards ==================== */
+
+  .fun-fact-grid {
+    display: flex;
+    flex-wrap: wrap;         /* reflows onto multiple rows on narrow screens */
+    justify-content: center;
+    gap: 14px;
+    margin-top: 22px;
+  }
+  .fun-fact-card {
+    background: #f2faf5;
+    border: 1px solid #cdeedb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-width: 130px;
+    flex: 1 1 130px;          /* grow/shrink, ~130px starting width */
+    max-width: 200px;         /* stop cards stretching too wide on their own row */
+  }
+  .fun-fact-icon {
+    display: block;
+    font-size: 1.5em;
+    color: #00A85A;
+    margin-bottom: 6px;
+  }
+  .fun-fact-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.3rem, 4.5vw, 1.8rem);
+    color: #00643B;
+    letter-spacing: 0.02em;
+  }
+  .fun-fact-label {
+    font-size: 0.78em;
+    color: #333333;
+    font-weight: 600;
+  }
+
+  /* ==================== Small-screen overrides ==================== */
+  /* Below 480px (most phones in portrait), tighten padding/gaps and
+     force two comparison cards per row instead of a cramped single row */
+  @media (max-width: 480px) {
+    .leak-section {
+      padding: 20px 14px;
+    }
+    .fun-fact-grid {
+      gap: 10px;
+    }
+    .fun-fact-card {
+      min-width: 100px;
+      flex: 1 1 45%;   /* ~2 cards per row */
+      padding: 10px 10px;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    // ==================== Core leak-rate constants ====================
+    const LITRES_PER_DAY = 400_000_000;
+    const LITRES_PER_SECOND = LITRES_PER_DAY / 86400;   // ≈ 4629.63
+    const MS_PER_LITRE = 1000 / LITRES_PER_SECOND;      // ≈ 216 ms per whole litre
+
+    const container = document.getElementById('odometer');
+
+    // ==================== Odometer factory ====================
+    // Builds an independent rolling-digit odometer bound to a given
+    // container element. Called twice below: once for the "since you
+    // arrived" counter, once for the "year to date" counter, so each
+    // gets its own set of digit elements and animation state.
+    function createOdometer(containerEl) {
+      let currentDigits = [];   // tracks the digit/comma elements currently on screen
+
+      // Builds one rolling digit column: a tall strip containing 0-9
+      // stacked vertically, viewed through a one-row-tall window.
+      function makeDigitEl() {
+        const wrap = document.createElement('div');
+        wrap.className = 'odo-digit';
+        const strip = document.createElement('div');
+        strip.className = 'odo-strip';
+        for (let i = 0; i <= 9; i++) {
+          const s = document.createElement('span');
+          s.textContent = i;
+          strip.appendChild(s);
+        }
+        wrap.appendChild(strip);
+        return { wrap, strip, value: 0 };
+      }
+
+      // Moves a digit's strip up so the requested value (0-9) lines up
+      // with the visible window. The CSS transition on .odo-strip is
+      // what makes this a smooth roll rather than an instant jump.
+      function setDigit(digitObj, value) {
+        digitObj.value = value;
+        digitObj.strip.style.transform = `translateY(-${value * 1.2}em)`;
+      }
+
+      // Renders a full formatted number (e.g. "12,345") into the odometer.
+      // Reuses existing digit/comma elements where possible so only the
+      // digits that actually changed get re-animated.
+      function render(numberStr) {
+        const chars = numberStr.split('');
+
+        // If the number of characters changed (e.g. the count just
+        // crossed from 999 to 1,000, adding a comma), rebuild from
+        // scratch — this only happens occasionally as the number grows.
+        if (chars.length !== currentDigits.length) {
+          containerEl.innerHTML = '';
+          currentDigits = chars.map(ch => {
+            if (ch === ',') {
+              const comma = document.createElement('div');
+              comma.className = 'odo-comma';
+              comma.textContent = ',';
+              containerEl.appendChild(comma);
+              return { comma: true, el: comma };
+            } else {
+              const d = makeDigitEl();
+              containerEl.appendChild(d.wrap);
+              setDigit(d, parseInt(ch, 10));
+              return d;
+            }
+          });
+        } else {
+          // Same digit count as last render — just update values in
+          // place so only changed digits trigger the roll animation.
+          chars.forEach((ch, i) => {
+            const d = currentDigits[i];
+            if (ch !== ',' && !d.comma) {
+              const val = parseInt(ch, 10);
+              if (d.value !== val) setDigit(d, val);
+            }
+          });
+        }
+      }
+
+      return { render };
+    }
+
+    // One odometer instance per counter on the page
+    const mainOdometer = createOdometer(container);
+    const ytdOdometer = createOdometer(document.getElementById('ytd-odometer'));
+
+    // Timestamp used to calculate elapsed time for the "since you arrived" counter
+    const startTime = Date.now();
+
+    // ==================== Comparison reference volumes (litres) ====================
+    const PERSON_DAILY_LITRES = 140;              // UK average water use per person per day (Consumer Council for Water)
+    const FIRE_ENGINE_LITRES = 1_800;             // standard UK fire engine (water tender) onboard tank capacity
+    const BATHTUB_LITRES = 150;                   // typical UK bath fill
+    const CUP_OF_TEA_LITRES = 0.25;                // standard mug
+    const TANKER_LITRES = 30_000;                  // typical road water tanker
+    const POOL_LITRES = 500_000;                   // standard 25m public leisure-centre swimming pool
+    const DATACENTRE_LITRES_PER_DAY = 2_100_000;   // avg. daily water use of a large hyperscale data centre (~Google avg.)
+
+    // ==================== "Since you arrived" comparison card elements ====================
+    const factPeople = document.getElementById('fact-people');
+    const factFireEngines = document.getElementById('fact-fireengines');
+    const factBaths = document.getElementById('fact-baths');
+    const factTea = document.getElementById('fact-tea');
+    const factTankers = document.getElementById('fact-tankers');
+    const factPools = document.getElementById('fact-pools');
+
+    // ==================== "Year to date" comparison card elements ====================
+    const ytdPeople = document.getElementById('ytd-people');
+    const ytdFireEngines = document.getElementById('ytd-fireengines');
+    const ytdBaths = document.getElementById('ytd-baths');
+    const ytdPools = document.getElementById('ytd-pools');
+    const ytdTankers = document.getElementById('ytd-tankers');
+    const ytdDatacentre = document.getElementById('ytd-datacentre');
+
+    // Recalculates and writes all six "since you arrived" comparison figures
+    function updateFacts(litresLeaked) {
+      factPeople.textContent = Math.floor(litresLeaked / PERSON_DAILY_LITRES).toLocaleString();
+      factFireEngines.textContent = Math.floor(litresLeaked / FIRE_ENGINE_LITRES).toLocaleString();
+      factBaths.textContent = Math.floor(litresLeaked / BATHTUB_LITRES).toLocaleString();
+      factTea.textContent = Math.floor(litresLeaked / CUP_OF_TEA_LITRES).toLocaleString();
+      factTankers.textContent = (litresLeaked / TANKER_LITRES).toLocaleString(undefined, { maximumFractionDigits: 1 });
+      factPools.textContent = (litresLeaked / POOL_LITRES).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
+    // Recalculates and writes all six "year to date" comparison figures
+    function updateYtdFacts(litresYtd) {
+      ytdPeople.textContent = Math.floor(litresYtd / PERSON_DAILY_LITRES).toLocaleString();
+      ytdFireEngines.textContent = Math.floor(litresYtd / FIRE_ENGINE_LITRES).toLocaleString();
+      ytdBaths.textContent = Math.floor(litresYtd / BATHTUB_LITRES).toLocaleString();
+      ytdDatacentre.textContent = (litresYtd / DATACENTRE_LITRES_PER_DAY).toLocaleString(undefined, { maximumFractionDigits: 1 });
+      ytdPools.textContent = (litresYtd / POOL_LITRES).toLocaleString(undefined, { maximumFractionDigits: 2 });
+      ytdTankers.textContent = (litresYtd / TANKER_LITRES).toLocaleString(undefined, { maximumFractionDigits: 1 });
+    }
+
+    // Runs once per second: recalculates both totals (since-arrival and
+    // year-to-date) and updates every odometer and comparison card.
+    function tick() {
+      // --- Since you arrived ---
+      const elapsedMs = Date.now() - startTime;
+      const litresLeaked = Math.floor(elapsedMs / MS_PER_LITRE);
+      mainOdometer.render(litresLeaked.toLocaleString());
+      updateFacts(litresLeaked);
+
+      // --- Year to date (from midnight on 1 January of the current year) ---
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const elapsedYtdMs = now - startOfYear;
+      const litresYtd = Math.floor((elapsedYtdMs / 1000) * LITRES_PER_SECOND);
+      ytdOdometer.render(litresYtd.toLocaleString());
+      updateYtdFacts(litresYtd);
+    }
+
+    tick();                        // run immediately so the page isn't blank for the first second
+    setInterval(tick, 1000);       // then update once per second — matches the odometer's 0.6s roll animation
+  })();
+</script>
