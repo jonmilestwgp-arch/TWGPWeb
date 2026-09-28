@@ -1,0 +1,534 @@
+<!-- ============================================================
+     Severn Trent Water live sewage-spill map + concurrent-spill-time
+     odometer. Styled to match the leak-counter.html section
+     (Green Party UK colours + fonts, no logos).
+     ============================================================ -->
+
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+
+<div id="spill-ticker-section" class="leak-section">
+
+  <!-- ==================== Header ==================== -->
+  <div class="spill-header">
+    <h1 class="spill-title">Stop the sewage spills now</h1>
+    <div class="spill-badge">
+      <span id="spill-badge-dot" class="spill-badge-dot"></span>
+      <span class="spill-badge-text">Updated every second</span>
+    </div>
+  </div>
+
+  <p class="leak-subtitle spill-intro">
+    Every second there are, on average, 23 spills happening across the Severn Trent Water network.
+  </p>
+
+  <!-- ==================== Map ==================== -->
+  <div class="spill-map-window">
+    <svg class="spill-svg" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid meet">
+      <!-- Muted catchment-area background shape, widened to comfortably
+           contain the repositioned towns below -->
+      <path class="spill-region-bg" d="M 60,30 Q 160,10 260,25 Q 345,40 355,90 Q 360,160 325,210 Q 260,250 180,235 Q 90,225 45,170 Q 15,110 30,55 Q 35,40 60,30 Z" />
+
+      <!-- River network — stylised, not traced GIS data, but follows
+           the correct real topology:
+             - Severn: enters from the west (Wales), through Shrewsbury
+               and Telford (Ironbridge Gorge), then south. A separate
+               stream represents the Avon (Coventry's river, a Severn
+               tributary), joining near the bottom of the map.
+             - Trent mainline: rises near Stoke-on-Trent, runs east via
+               Stafford/Burton to Nottingham, staying north of Birmingham
+               throughout.
+             - Tame: branches off the Trent mainline south to Birmingham
+               (via Tamworth) — Birmingham sits on the Tame, not the Trent.
+             - Derwent: branches off the Trent mainline up to Derby.
+             - Soar: branches off the Trent mainline down to Leicester,
+               rejoining near Nottingham.
+           Spill dots snap onto random points along this path via its id. -->
+      <path id="spillRiverNetwork" class="spill-river-line"
+            d="M 48,78 Q 55,92 62,108 Q 66,118 70,120 Q 88,132 100,124 Q 112,118 118,128
+               Q 132,142 140,160 Q 150,170 155,190 Q 158,205 152,218 Q 146,232 150,245
+               M 155,35 Q 172,55 162,75 Q 152,92 178,98 Q 200,103 195,85 Q 190,68 215,72
+               Q 235,75 228,95 Q 222,110 248,105 Q 268,101 262,82 Q 258,68 282,72
+               Q 300,75 296,92 Q 293,103 312,95 Q 325,90 318,68 Q 314,55 330,45
+               M 262,82 Q 268,70 270,55
+               M 195,85 Q 202,110 208,130 Q 214,150 208,168 Q 204,180 205,190
+               M 296,92 Q 305,115 298,130 Q 292,142 310,145 Q 320,147 325,148
+               M 265,215 Q 250,222 235,215 Q 220,208 205,215 Q 190,222 180,235 Q 165,242 150,245" />
+
+      <!-- Town markers + labels. Positions are based on real relative
+           lat/long, so compass directions and distances between them
+           are accurate — stylised, not precise GIS. Labels alternate
+           sides (via text-anchor) so nearby ones don't overlap. All
+           towns are Telford-sized or larger, within Severn Trent
+           Water's supply area. Marker radius scales roughly with
+           population (Shrewsbury ~75k up to Birmingham ~1.15m). -->
+
+      <circle class="spill-city-marker" cx="70" cy="120" r="3.5" />
+      <text class="spill-city-label" x="70" y="107" text-anchor="middle">Shrewsbury</text>
+
+      <circle class="spill-city-marker" cx="118" cy="128" r="4" />
+      <text class="spill-city-label" x="118" y="116" text-anchor="middle">Telford</text>
+
+      <circle class="spill-city-marker" cx="155" cy="35" r="5" />
+      <text class="spill-city-label" x="155" y="23" text-anchor="middle">Stoke-on-Trent</text>
+
+      <circle class="spill-city-marker" cx="165" cy="158" r="5.5" />
+      <text class="spill-city-label" x="160" y="176" text-anchor="end">Wolverhampton</text>
+
+      <circle class="spill-city-marker" cx="205" cy="190" r="8" />
+      <text class="spill-city-label" x="214" y="177" text-anchor="start">Birmingham</text>
+
+      <circle class="spill-city-marker" cx="270" cy="55" r="5" />
+      <text class="spill-city-label" x="270" y="43" text-anchor="middle">Derby</text>
+
+      <circle class="spill-city-marker" cx="330" cy="45" r="5.5" />
+      <text class="spill-city-label" x="330" y="33" text-anchor="middle">Nottingham</text>
+
+      <circle class="spill-city-marker" cx="325" cy="148" r="5.5" />
+      <text class="spill-city-label" x="332" y="136" text-anchor="start">Leicester</text>
+
+      <circle class="spill-city-marker" cx="265" cy="215" r="5.5" />
+      <text class="spill-city-label" x="272" y="227" text-anchor="start">Coventry</text>
+
+      <!-- Live spill dots get inserted/replaced here once per second -->
+      <g id="spillLayer"></g>
+    </svg>
+  </div>
+
+  <!-- ==================== Odometer: total concurrent spill time ==================== -->
+  <p class="leak-footer-label">Total network spill time since loading page</p>
+
+  <div class="spill-odo-grid">
+    <div class="spill-odo-unit">
+      <div class="odometer-wrap">
+        <div id="spill-odo-hours" class="odometer-box"></div>
+      </div>
+      <div class="spill-odo-caption">Hours</div>
+    </div>
+    <div class="spill-odo-unit">
+      <div class="odometer-wrap">
+        <div id="spill-odo-minutes" class="odometer-box"></div>
+      </div>
+      <div class="spill-odo-caption">Minutes</div>
+    </div>
+    <div class="spill-odo-unit">
+      <div class="odometer-wrap">
+        <div id="spill-odo-seconds" class="odometer-box"></div>
+      </div>
+      <div class="spill-odo-caption">Seconds</div>
+    </div>
+  </div>
+
+  <p class="spill-ratio-note">
+    For every second you spend on this page, Severn Trent Water's network racks up 22.8 seconds of concurrent
+    sewage spilling — because multiple overflow points are active across the network at once.
+  </p>
+
+</div>
+
+<style>
+  /* ==================== Shared with leak-counter.html ====================
+     Kept identical to leak-counter.html so both sections behave the same
+     if they ever appear on one page. Spill-ticker-specific sizing is
+     applied via scoped selectors further down instead of editing these. */
+
+  .leak-section {
+    box-sizing: border-box;
+    font-family: 'Manrope', sans-serif;
+    text-align: center;
+    padding: 30px 24px;
+    background: #ffffff;
+    border: 2px solid #00A85A;   /* Green Party "Fair Green" */
+    border-radius: 10px;
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .leak-section * {
+    box-sizing: border-box;
+  }
+
+  .leak-subtitle {
+    margin: 0 0 4px;
+    color: #28AA1E;   /* Green Party "Strong Green" */
+    font-size: clamp(0.75rem, 2.6vw, 0.9rem);
+    font-weight: 600;
+  }
+  .leak-footer-label {
+    margin: 22px 0 8px;
+    padding-top: 14px;
+    border-top: 1px solid #cdeedb;
+    color: #00643B;
+    font-size: clamp(0.7rem, 2.4vw, 0.85rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ==================== Header ==================== */
+
+  .spill-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 2px solid #cdeedb;
+    padding-bottom: 14px;
+    margin-bottom: 10px;
+  }
+
+  .spill-title {
+    margin: 0;
+    font-family: 'Bebas Neue', sans-serif;
+    text-transform: uppercase;   /* source text stays sentence case, this is visual only */
+    color: #00643B;              /* Green Party "Fun Green" (dark) */
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+  }
+
+  .spill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f2faf5;
+    border: 1px solid #cdeedb;
+    border-radius: 999px;
+    padding: 6px 14px;
+    flex-shrink: 0;
+  }
+  .spill-badge-text {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #00643B;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .spill-badge-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #00A85A;
+    /* No animation set here — .pulsing (below) is added/removed by
+       tick() in JS instead, so it fires in the same frame as the map
+       and odometer updates rather than running on its own CSS clock. */
+  }
+  .spill-badge-dot.pulsing {
+    animation: spillPulse 1s ease-in-out;
+  }
+  @keyframes spillPulse {
+    0%   { transform: scale(1);   box-shadow: 0 0 0 0 rgba(0, 168, 90, 0.6); }
+    40%  { transform: scale(1.4); box-shadow: 0 0 0 6px rgba(0, 168, 90, 0); }
+    100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(0, 168, 90, 0); }
+  }
+
+  .spill-intro {
+    margin-bottom: 18px;
+  }
+
+  /* ==================== Map ==================== */
+
+  .spill-map-window {
+    width: 100%;
+    /* aspect-ratio keeps the SVG's proportions on any screen width,
+       rather than a fixed pixel height that clips on small screens */
+    aspect-ratio: 400 / 260;
+    background: #f2faf5;
+    border: 1.5px solid #cdeedb;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .spill-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .spill-region-bg {
+    fill: #e3f3e7;
+    stroke: #b9dcc4;
+    stroke-width: 1.5;
+  }
+  .spill-river-line {
+    fill: none;
+    stroke: #7fb8db;   /* rivers stay blue for map legibility */
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+  .spill-city-marker {
+    fill: #00643B;
+    stroke: #ffffff;
+    stroke-width: 1.5;
+  }
+  .spill-city-label {
+    font-family: 'Manrope', sans-serif;
+    font-size: 9.5px;
+    font-weight: 800;
+    fill: #00643B;
+  }
+
+  /* Spill dots: quick fade-in-and-grow, then fade out, so 23 new ones
+     each second read as a "pulse" across the map rather than a jump-cut */
+  .spill-node {
+    fill: #d9534f;
+    opacity: 0;
+    /* Without these, SVG scales from the viewport's (0,0) origin rather
+       than the element's own center, making dots drift as they scale. */
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: spillFade 1s linear;
+  }
+  @keyframes spillFade {
+    0%   { opacity: 0;   transform: scale(0.3); }
+    20%  { opacity: 0.9; }
+    100% { opacity: 0;   transform: scale(1.8); }
+  }
+
+  /* ==================== Odometer (same rolling-digit mechanism as leak-counter.html) ==================== */
+
+  .spill-odo-grid {
+    display: flex;
+    justify-content: center;
+    gap: clamp(10px, 3vw, 22px);
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .spill-odo-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .spill-odo-caption {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #333333;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .odometer-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+    overflow-x: auto;
+  }
+  .odometer-box {
+    display: inline-flex;
+    background: #00643B;
+    padding: 10px clamp(10px, 3vw, 18px);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 100, 59, 0.3);
+    overflow: hidden;
+    max-width: 100%;
+  }
+  /* Scoped to the three-up HH/MM/SS layout, which needs less padding
+     than the single large odometer — a descendant selector always wins
+     over the shared single-class rule, so this doesn't touch it directly. */
+  .spill-odo-unit .odometer-wrap {
+    width: auto;
+    margin-top: 0;
+  }
+  .spill-odo-unit .odometer-box {
+    padding: 8px clamp(8px, 2vw, 14px);
+  }
+
+  /* Each digit is a fixed-height window (.odo-digit) showing one number
+     from a vertical strip of 0-9 (.odo-strip); sliding the strip up
+     reveals the next digit underneath. Kept identical to leak-counter.html. */
+  .odo-digit {
+    position: relative;
+    width: 0.56em;
+    height: 1.2em;
+    overflow: hidden;
+    font-size: clamp(1.4rem, 7vw, 3rem);
+    font-weight: 400;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+  .odo-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .odo-strip span {
+    height: 1.2em;
+    line-height: 1.2em;
+    text-align: center;
+  }
+  /* Smaller digits for the three-up HH/MM/SS layout */
+  .spill-odo-unit .odo-digit {
+    font-size: clamp(1.2rem, 5vw, 1.9rem);
+  }
+
+  .spill-ratio-note {
+    font-size: 0.8rem;
+    color: #555555;
+    text-align: center;
+    line-height: 1.5;
+    font-weight: 600;
+  }
+
+  /* ==================== Small-screen overrides ==================== */
+  @media (max-width: 480px) {
+    .leak-section {
+      padding: 20px 14px;
+    }
+    .spill-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    // ==================== Odometer factory (same mechanism as leak-counter.html) ====================
+    // Builds a rolling-digit odometer bound to a container. Called three
+    // times below: hours, minutes, seconds.
+    function createOdometer(containerEl) {
+      let currentDigits = [];
+
+      function makeDigitEl() {
+        const wrap = document.createElement('div');
+        wrap.className = 'odo-digit';
+        const strip = document.createElement('div');
+        strip.className = 'odo-strip';
+        for (let i = 0; i <= 9; i++) {
+          const s = document.createElement('span');
+          s.textContent = i;
+          strip.appendChild(s);
+        }
+        wrap.appendChild(strip);
+        return { wrap, strip, value: 0 };
+      }
+
+      function setDigit(digitObj, value) {
+        digitObj.value = value;
+        digitObj.strip.style.transform = `translateY(-${value * 1.2}em)`;
+      }
+
+      // Renders a fixed-width digit string (e.g. "05"). Rebuilds only if
+      // the character count changes (e.g. hours ticking past 99);
+      // otherwise updates digits in place so only changed ones animate.
+      function render(numberStr) {
+        const chars = numberStr.split('');
+
+        if (chars.length !== currentDigits.length) {
+          containerEl.innerHTML = '';
+          currentDigits = chars.map(ch => {
+            const d = makeDigitEl();
+            containerEl.appendChild(d.wrap);
+            setDigit(d, parseInt(ch, 10));
+            return d;
+          });
+        } else {
+          chars.forEach((ch, i) => {
+            const d = currentDigits[i];
+            const val = parseInt(ch, 10);
+            if (d.value !== val) setDigit(d, val);
+          });
+        }
+      }
+
+      return { render };
+    }
+
+    const hoursOdometer = createOdometer(document.getElementById('spill-odo-hours'));
+    const minutesOdometer = createOdometer(document.getElementById('spill-odo-minutes'));
+    const secondsOdometer = createOdometer(document.getElementById('spill-odo-seconds'));
+
+    // ==================== Concurrent spill-time accumulator ====================
+    // 22.8 "network seconds" of spilling are recorded for every 1 real
+    // second, since many overflow points are active simultaneously.
+    const CONCURRENT_SPILL_RATIO = 22.8;
+    let accumulatedNetworkSeconds = 0;
+
+    function updateOdometers() {
+      accumulatedNetworkSeconds += CONCURRENT_SPILL_RATIO;
+
+      const totalSeconds = Math.floor(accumulatedNetworkSeconds);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      // Pad to at least 2 digits (e.g. "05"); hours can grow beyond 2
+      // digits in a very long session and the odometer factory handles
+      // that by rebuilding its digit columns automatically.
+      hoursOdometer.render(String(hours).padStart(2, '0'));
+      minutesOdometer.render(String(minutes).padStart(2, '0'));
+      secondsOdometer.render(String(seconds).padStart(2, '0'));
+    }
+
+    // ==================== Live spill map ====================
+    const riverPathElement = document.getElementById('spillRiverNetwork');
+    const SPILLS_PER_SECOND = 23;
+    const RIVER_TARGET_RATIO = 0.8;   // at least 80% of spills sit on the river path
+
+    // Picks a random point along the river path (SVG's built-in path
+    // length/point APIs make this exact, regardless of the path's shape).
+    function getCoordinatesAlongRiver() {
+      const pathLength = riverPathElement.getTotalLength();
+      const randomLength = Math.random() * pathLength;
+      const point = riverPathElement.getPointAtLength(randomLength);
+      return { x: point.x, y: point.y };
+    }
+
+    // Picks a random point scattered within the catchment area's bounding
+    // box, for the ~20% of spills not tied to the river network.
+    function getRandomCatchmentCoordinates() {
+      const x = 40 + Math.random() * 300;
+      const y = 25 + Math.random() * 210;
+      return { x, y };
+    }
+
+    // Clears and redraws all 23 spill markers for this second. All icons
+    // are given the same animation start (no per-icon random delay), so
+    // they activate together rather than staggering in.
+    function refreshSpillMap() {
+      const spillLayer = document.getElementById('spillLayer');
+      spillLayer.innerHTML = '';
+
+      for (let i = 0; i < SPILLS_PER_SECOND; i++) {
+        const coords = Math.random() < RIVER_TARGET_RATIO
+          ? getCoordinatesAlongRiver()
+          : getRandomCatchmentCoordinates();
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', coords.x);
+        circle.setAttribute('cy', coords.y);
+        circle.setAttribute('r', '6');
+        circle.setAttribute('class', 'spill-node');
+        spillLayer.appendChild(circle);
+      }
+    }
+
+    // Restarts the pulse dot's animation: remove the class, force a
+    // reflow, re-add it — the standard way to restart a CSS animation.
+    const badgeDot = document.getElementById('spill-badge-dot');
+    function restartPulse() {
+      badgeDot.classList.remove('pulsing');
+      void badgeDot.offsetWidth;   // forces the reflow
+      badgeDot.classList.add('pulsing');
+    }
+
+    function tick() {
+      updateOdometers();
+      refreshSpillMap();
+      restartPulse();   // same tick as the map/odometer update, so all three fire in lockstep
+    }
+
+    tick();                    // run immediately so the page isn't blank for the first second
+    setInterval(tick, 1000);   // then once per second, matching the odometer's 0.6s roll animation
+  })();
+</script>
